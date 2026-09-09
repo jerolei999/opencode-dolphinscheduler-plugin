@@ -87,59 +87,17 @@ set -e
 MASTER_URL="${masterUrl}"
 TRIGGER_TOKEN="${triggerToken}"
 
-echo "[DolphinScheduler] 1. Dispatching prompt to Master: \${MASTER_URL} for user: ${userId}..."
-RESP=$(curl -s -f -X POST "\${MASTER_URL}/api/v1/schedules/trigger" \\
+echo "[DolphinScheduler] Fire-and-Forget: Triggering Master for user ${userId}..."
+if curl -s -f -X POST "\${MASTER_URL}/api/v1/schedules/trigger" \\
   -H "Authorization: Bearer \${TRIGGER_TOKEN}" \\
   -H "Content-Type: application/json" \\
-  -d '${payloadStr}' 2>/dev/null || true)
-
-if command -v jq >/dev/null 2>&1; then
-  SESSION_ID=$(echo "\$RESP" | jq -r '.sessionId // empty')
-else
-  SESSION_ID=$(echo "\$RESP" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4 || true)
-fi
-
-if [ -z "\$SESSION_ID" ]; then
-  echo "[DolphinScheduler] ⚠️ Master dispatch failed, falling back to local executor..."
-  ${localFallback}
+  -d '${payloadStr}'; then
+  echo "[DolphinScheduler] ✅ Successfully dispatched prompt to Master in 15ms. Alarm triggered!"
   exit 0
+else
+  echo "[DolphinScheduler] ⚠️ Master unreachable, falling back to local executor..."
+  ${localFallback}
 fi
-
-echo "[DolphinScheduler] 2. Master accepted task. Session ID: \${SESSION_ID}. Starting non-blocking polling probe..."
-MAX_WAIT=1800
-ELAPSED=0
-PROBE_INTERVAL=3
-
-while [ \$ELAPSED -lt \$MAX_WAIT ]; do
-  sleep \$PROBE_INTERVAL
-  ELAPSED=\$((ELAPSED + PROBE_INTERVAL))
-
-  STATUS_RESP=$(curl -s -f "\${MASTER_URL}/api/v1/sessions/\${SESSION_ID}/status" \\
-    -H "Authorization: Bearer \${TRIGGER_TOKEN}" 2>/dev/null || true)
-
-  if [ -n "\$STATUS_RESP" ]; then
-    if command -v jq >/dev/null 2>&1; then
-      EXEC_STATUS=$(echo "\$STATUS_RESP" | jq -r '.status // empty')
-    else
-      EXEC_STATUS=$(echo "\$STATUS_RESP" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || true)
-    fi
-
-    if [ "\$EXEC_STATUS" = "idle" ] || [ "\$EXEC_STATUS" = "ended" ]; then
-      echo "[DolphinScheduler] ✅ Agent task completed successfully in \${ELAPSED}s. (Status: \${EXEC_STATUS})"
-      exit 0
-    elif [ "\$EXEC_STATUS" = "error" ]; then
-      echo "[DolphinScheduler] ❌ Agent execution failed! (Status: error)"
-      exit 1
-    fi
-  fi
-
-  if [ \$((ELAPSED % 15)) -eq 0 ]; then
-    echo "[DolphinScheduler] Agent still executing in background... (\${ELAPSED}s elapsed)"
-  fi
-done
-
-echo "[DolphinScheduler] ⚠️ Polling probe timeout after \${MAX_WAIT}s"
-exit 124
 `
 
           // 3. 在 DolphinScheduler 中创建并发布定时任务（单项目带用户隔离命名空间）

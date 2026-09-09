@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  dolphinscheduler-standalone:
+    image: apache/dolphinscheduler-standalone-server:3.2.2
+    container_name: opencode-dolphinscheduler
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_JACKSON_TIME_ZONE=Asia/Shanghai
+    ports:
+      - "12345:12345"
+    volumes:
+      - opencode_ds_data:/root/dolphinscheduler
+    restart: unless-stopped
+
+volumes:
+  opencode_ds_data:
+    name: opencode_ds_data

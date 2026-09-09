@@ -9,7 +9,7 @@
 ## 🌟 核心特性
 
 - **单项目多租户隔离（Project-per-User Namespace）**：在 DolphinScheduler 统一项目下，自动采用 `usr_${userId}__${taskName}` 前缀隔离各用户任务，实现查询过滤与删除防越权（IDOR Protection）。
-- **异步解耦架构（Async Handshake + Polling Probe）**：DolphinScheduler 触发时与 Master 进行毫秒级短连接握手，零长连接阻塞，完全免疫网关 60s 超时风险。
+- **发后即忘极致解耦（Fire-and-Forget Dispatch）**：DolphinScheduler 触发时与 Master 仅进行一次 15ms 短连接握手，零长连接阻塞，零轮询等待，任务瞬间置绿并释放调度槽位。
 - **真实 Agent 闭环**：触发后由 Master 拉起带有租约保护的专属 Session，调用真实 OpenCode 智能体、搜索引擎与代码沙箱，并在 Web 控制台形成完整历史记录。
 - **开箱即用 Docker 编排**：内置 DolphinScheduler 3.2.2 单机容器编排，支持本地/云端一键就绪与自动探活守护。
 
